@@ -354,64 +354,64 @@ def download_youtube_audio(youtube_url, output_path="downloads"):
             'preferredcodec': 'mp3',
             'preferredquality': '192',
         }],
-        'quiet': False,  # Set to False to see more details
-        'verbose': True,  # Add verbose output
-        'no_warnings': False,  # Show warnings
-        
-        # Enhanced headers to mimic browser
+        # Enhanced bypass options
         'http_headers': {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Accept-Encoding': 'gzip, deflate',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
             'Connection': 'keep-alive',
             'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1',
+            'Cache-Control': 'max-age=0',
         },
-        
-        # Additional options to bypass restrictions
         'extract_flat': False,
         'ignoreerrors': True,
         'retries': 10,
         'fragment_retries': 10,
         'skip_unavailable_fragments': True,
         'keep_fragments': True,
+        'no_check_certificate': True,
+        'geo_bypass': True,
+        'geo_bypass_country': 'US',
+        'geo_bypass_ip_block': '0.0.0.0/0',
+        'verbose': True,
     }
     
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # Try to extract info first
+            # Extract info first
             info = ydl.extract_info(youtube_url, download=False)
             video_title = info.get('title', 'unknown_title')
             
-            # Now try to download
-            st.info(f"Downloading: {video_title}")
-            ydl.download([youtube_url])
+            st.info(f"Attempting to download: {video_title}")
+            
+            # Try to download
+            try:
+                ydl.download([youtube_url])
+            except Exception as download_error:
+                st.warning(f"Standard download failed: {download_error}. Trying alternative method...")
+                # Try with different format
+                return download_youtube_audio_fallback(youtube_url, output_path)
             
             # Find the downloaded file
-            audio_filename = ydl.prepare_filename(info).replace('.webm', '.mp3').replace('.m4a', '.mp3')
+            expected_filename = ydl.prepare_filename(info).replace('.webm', '.mp3').replace('.m4a', '.mp3')
             
-            if os.path.exists(audio_filename):
-                return audio_filename, video_title
+            if os.path.exists(expected_filename):
+                return expected_filename, video_title
             else:
-                # Try to find any audio file in the directory
+                # Look for any audio file in the directory
                 for file in os.listdir(output_path):
-                    if file.endswith('.mp3'):
+                    if file.endswith(('.mp3', '.m4a', '.webm')):
                         return os.path.join(output_path, file), video_title
                 
                 return None, video_title
                 
     except Exception as e:
         st.error(f"Error downloading video: {e}")
-        return None, None
-        
-    except Exception as e:
-        st.warning(f"Second download method failed: {e}")
-    
-    # Method 3: Use pytube as last resort
-    try:
-        return download_with_pytube(youtube_url, output_path)
-    except Exception as e:
-        st.error(f"All download methods failed: {e}")
         return None, None
 
 def transcribe_audio(audio_path, model_size="base"):
@@ -1238,6 +1238,7 @@ def ask_gemini(question, context):
 if __name__ == "__main__":
 
     main()
+
 
 
 
