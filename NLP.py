@@ -544,18 +544,44 @@ def build_search_index(chunks):
     return index, embeddings_np
 
 def answer_question(question, chunks, index, qa_pipeline, top_k=3):
-    question_embedding = embedder.encode([question], convert_to_tensor=True)
-    question_embedding = question_embedding.cpu().numpy()
-    question_embedding = question_embedding / np.linalg.norm(question_embedding, axis=1, keepdims=True)
-    distances, indices = index.search(question_embedding.astype('float32'), top_k)
-    relevant_chunks = [chunks[i] for i in indices[0] if i < len(chunks)]
-    context = "\n".join(relevant_chunks)
-    result = qa_pipeline({'question': question, 'context': context})
-    return {
-        'answer': result['answer'],
-        'score': result['score'],
-        'relevant_chunks': relevant_chunks
-    }
+    if index is None or not chunks:
+        return {
+            'answer': 'No content available to answer questions',
+            'score': 0.0,
+            'relevant_chunks': []
+        }
+    
+    try:
+        question_embedding = embedder.encode([question], convert_to_tensor=True)
+        question_embedding = question_embedding.cpu().numpy()
+        
+        # Handle 1D array
+        if len(question_embedding.shape) == 1:
+            question_embedding = question_embedding.reshape(1, -1)
+        
+        # Normalize question embedding
+        question_norm = np.linalg.norm(question_embedding, axis=1, keepdims=True)
+        question_norm = np.where(question_norm == 0, 1, question_norm)
+        question_embedding = question_embedding / question_norm
+        
+        distances, indices = index.search(question_embedding.astype('float32'), top_k)
+        relevant_chunks = [chunks[i] for i in indices[0] if i < len(chunks)]
+        context = "\n".join(relevant_chunks)
+        
+        result = qa_pipeline({'question': question, 'context': context})
+        return {
+            'answer': result['answer'],
+            'score': result['score'],
+            'relevant_chunks': relevant_chunks
+        }
+        
+    except Exception as e:
+        st.error(f"Error answering question: {e}")
+        return {
+            'answer': 'Error processing question',
+            'score': 0.0,
+            'relevant_chunks': []
+        }
 
 # Evaluation & Visualization Functions
 def evaluate_summary(reference, generated):
@@ -1212,6 +1238,7 @@ def ask_gemini(question, context):
 if __name__ == "__main__":
 
     main()
+
 
 
 
