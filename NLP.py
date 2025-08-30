@@ -166,17 +166,58 @@ def structured_extract_text(pdf_path, do_ocr_images=False):
 # Language and entity functions
 @st.cache_resource
 def load_spacy_models():
-    try:
-        nlp_en = spacy.load("en_core_web_sm")
-    except:
-        os.system("python -m spacy download en_core_web_sm")
-        nlp_en = spacy.load("en_core_web_sm")
+    import subprocess
+    import sys
     
+    nlp_en = None
+    nlp_multi = None
+    
+    # Try to load English model
+    try:
+        nlp_en = spacy.load("en_core_web_sm")
+        st.success("Loaded English spaCy model")
+    except OSError:
+        st.warning("Downloading English spaCy model... This may take a few minutes.")
+        try:
+            # Use subprocess instead of os.system for better reliability
+            result = subprocess.run([
+                sys.executable, "-m", "spacy", "download", "en_core_web_sm"
+            ], capture_output=True, text=True, timeout=300)
+            
+            if result.returncode == 0:
+                nlp_en = spacy.load("en_core_web_sm")
+                st.success("Successfully downloaded and loaded English spaCy model")
+            else:
+                st.error(f"Failed to download English model: {result.stderr}")
+                # Fallback: create a minimal nlp object
+                nlp_en = spacy.blank("en")
+        except (subprocess.TimeoutExpired, Exception) as e:
+            st.error(f"Error downloading spaCy model: {e}")
+            # Fallback: create a minimal nlp object
+            nlp_en = spacy.blank("en")
+    
+    # Try to load multi-language model
     try:
         nlp_multi = spacy.load("xx_ent_wiki_sm")
-    except:
-        os.system("python -m spacy download xx_ent_wiki_sm")
-        nlp_multi = spacy.load("xx_ent_wiki_sm")
+        st.success("Loaded multi-language spaCy model")
+    except OSError:
+        st.warning("Downloading multi-language spaCy model...")
+        try:
+            result = subprocess.run([
+                sys.executable, "-m", "spacy", "download", "xx_ent_wiki_sm"
+            ], capture_output=True, text=True, timeout=300)
+            
+            if result.returncode == 0:
+                nlp_multi = spacy.load("xx_ent_wiki_sm")
+                st.success("Successfully downloaded and loaded multi-language spaCy model")
+            else:
+                st.error(f"Failed to download multi-language model: {result.stderr}")
+                # Use English model as fallback
+                nlp_multi = nlp_en
+        except (subprocess.TimeoutExpired, Exception) as e:
+            st.error(f"Error downloading multi-language model: {e}")
+            # Use English model as fallback
+            nlp_multi = nlp_en
     
     return nlp_en, nlp_multi
 
@@ -873,4 +914,5 @@ def ask_gemini(question, context):
         return f"Error: {str(e)}"
 
 if __name__ == "__main__":
+
     main()
