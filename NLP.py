@@ -510,7 +510,41 @@ def create_wordcloud(text, title="Word Cloud"):
     ax.axis('off')
     ax.set_title(title)
     return fig
-
+def extract_entities(text, lang='en'):
+    """
+    Extract entities from text with debugging
+    """
+    print(f"Extracting entities from text: {text[:100]}...")  # Debug
+    
+    # If spaCy models aren't available, return empty list
+    if nlp_en is None or not hasattr(nlp_en, 'pipe_names'):
+        print("spaCy model not available")  # Debug
+        return []
+    
+    try:
+        if lang.startswith('en'):
+            doc = nlp_en(text)
+        else:
+            doc = nlp_multi(text) if nlp_multi else nlp_en(text)
+        
+        entities = [{'text': ent.text, 'label': ent.label_} for ent in doc.ents]
+        print(f"Found {len(entities)} entities: {entities}")  # Debug
+        return entities
+        
+    except Exception as e:
+        print(f"Entity extraction failed: {e}")  # Debug
+        # Simple fallback: extract capitalized words as potential entities
+        try:
+            import re
+            # Simple regex to find potential entities (capitalized words)
+            potential_entities = re.findall(r'\b[A-Z][a-z]+\b(?:\s+[A-Z][a-z]+\b)*', text)
+            fallback_entities = [{'text': ent, 'label': 'UNKNOWN'} for ent in potential_entities[:10]]
+            print(f"Using fallback entities: {fallback_entities}")  # Debug
+            return fallback_entities
+        except Exception as fallback_error:
+            print(f"Fallback entity extraction also failed: {fallback_error}")  # Debug
+            return []
+            
 def plot_entity_types(entities):
     entity_counts = Counter([entity['label'] for entity in entities])
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -1113,6 +1147,7 @@ def ask_gemini(question, context):
 if __name__ == "__main__":
 
     main()
+
 
 
 
