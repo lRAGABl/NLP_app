@@ -520,6 +520,67 @@ def plot_entity_types(entities):
     plt.tight_layout()
     return fig
 
+def save_report(content, filename="analysis_report", title="Document Analysis Report"):
+    """
+    Save report content to a file with multiple fallback options
+    Returns the file path and MIME type
+    """
+    try:
+        # Try PDF first
+        try:
+            pdf_path = f"{filename}.pdf"
+            c = canvas.Canvas(pdf_path, pagesize=letter)
+            width, height = letter
+            margin = 50
+            y_position = height - margin
+            
+            c.setFont("Helvetica-Bold", 16)
+            c.drawString(margin, y_position, title)
+            y_position -= 30
+            
+            c.setFont("Helvetica", 12)
+            lines = textwrap.wrap(content, width=80)
+            
+            for line in lines:
+                if y_position < margin:
+                    c.showPage()
+                    y_position = height - margin
+                    c.setFont("Helvetica", 12)
+                c.drawString(margin, y_position, line)
+                y_position -= 15
+            
+            c.save()
+            
+            if os.path.exists(pdf_path):
+                return pdf_path, "application/pdf"
+        except Exception as e:
+            print(f"PDF creation failed: {e}")
+        
+        # Fallback to text file
+        try:
+            txt_path = f"{filename}.txt"
+            with open(txt_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            if os.path.exists(txt_path):
+                return txt_path, "text/plain"
+        except Exception as e:
+            print(f"Text file creation failed: {e}")
+        
+        # Final fallback: temporary file
+        try:
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8') as f:
+                f.write(content)
+                temp_path = f.name
+            return temp_path, "text/plain"
+        except Exception as e:
+            print(f"Temp file creation failed: {e}")
+            raise Exception("All file creation methods failed")
+            
+    except Exception as e:
+        # Ultimate fallback: return None and handle in calling code
+        print(f"Error saving report: {e}")
+        return None, None
+
 def save_to_pdf(content, filename="document_analysis.pdf", title="Document Analysis Report"):
     try:
         # Create the directory if it doesn't exist
@@ -1033,6 +1094,7 @@ def ask_gemini(question, context):
 if __name__ == "__main__":
 
     main()
+
 
 
 
