@@ -406,10 +406,26 @@ def download_youtube_audio(youtube_url, output_path="downloads"):
 
 def transcribe_audio(audio_path, model_size="base"):
     st.info(f"Loading Whisper {model_size} model...")
-    model = whisper.load_model(model_size)
-    st.info("Transcribing audio...")
-    result = model.transcribe(audio_path)
-    return result["text"]
+    
+    try:
+        model = whisper.load_model(model_size)
+        st.info("Transcribing audio...")
+        
+        # Check if file exists
+        if not os.path.exists(audio_path):
+            raise FileNotFoundError(f"Audio file not found: {audio_path}")
+        
+        result = model.transcribe(audio_path)
+        return result["text"]
+        
+    except FileNotFoundError as e:
+        st.error(f"Audio file not found: {e}")
+        return ""
+    except Exception as e:
+        st.error(f"Transcription failed: {e}")
+        
+        # Try alternative transcription method
+        return transcribe_audio_fallback(audio_path)
 
 def split_transcript(transcript, max_chunk_duration=10):
     words = transcript.split()
@@ -1186,6 +1202,7 @@ def ask_gemini(question, context):
 if __name__ == "__main__":
 
     main()
+
 
 
 
