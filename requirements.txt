@@ -28,5 +28,4 @@ Pillow
 matplotlib
 tqdm
 requests
-
-python-dotenv==1.0.0
+python-dotenv
