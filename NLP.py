@@ -625,6 +625,25 @@ def save_to_pdf(content, filename="document_analysis.pdf", title="Document Analy
             f.write(content)
         return fallback_filename
 
+def create_download_button(file_path, mime_type, label="Download Report"):
+    """Create a download button for a file"""
+    if file_path and os.path.exists(file_path):
+        try:
+            with open(file_path, "rb") as f:
+                st.download_button(
+                    label=label,
+                    data=f,
+                    file_name=os.path.basename(file_path),
+                    mime=mime_type
+                )
+            return True
+        except Exception as e:
+            st.error(f"Error creating download button: {e}")
+            return False
+    else:
+        st.warning("Report file could not be generated for download")
+        return False
+
 def save_models(model, tokenizer, save_path="saved_models"):
     os.makedirs(save_path, exist_ok=True)
     model.save_pretrained(save_path)
@@ -1094,6 +1113,7 @@ def ask_gemini(question, context):
 if __name__ == "__main__":
 
     main()
+
 
 
 
