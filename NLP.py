@@ -635,7 +635,6 @@ def save_mcqs_to_file(mcqs, filename):
         st.error(f"Error saving file: {e}")
         return None
 
-# Processing Functions
 def process_pdf_document(uploaded_file, do_ocr, model_choice, target_words, compression_ratio):
     # Save uploaded file temporarily
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
@@ -673,7 +672,10 @@ SUMMARY:
 KEY ENTITIES:
 {', '.join([e['text'] for e in entities[:20]])}"""
         
-        pdf_path = save_to_pdf(final_output, "analysis_report.pdf")
+        # Save report using robust method
+        report_path, mime_type = save_report(final_output, "analysis_report")
+        
+        # Save models
         model_path = save_models(model, tokenizer)
         
         return {
@@ -683,12 +685,25 @@ KEY ENTITIES:
             'qa_system': (search_index, embeddings, qa_pipeline),
             'wordcloud_fig': wordcloud_fig,
             'entities_fig': entities_fig,
-            'pdf_path': pdf_path,
+            'report_path': report_path,
+            'report_mime_type': mime_type,
             'model_path': model_path
+        }
+    except Exception as e:
+        st.error(f"Error processing document: {e}")
+        # Return at least some data even if processing failed
+        return {
+            'error': str(e),
+            'report_path': None,
+            'report_mime_type': None
         }
     finally:
         # Clean up temporary file
-        os.unlink(pdf_path)
+        try:
+            if os.path.exists(pdf_path):
+                os.unlink(pdf_path)
+        except:
+            pass
 
 def process_youtube_video(youtube_url, model_size, chunk_duration, model_choice, target_words):
     st.info("Downloading YouTube audio...")
@@ -1013,6 +1028,7 @@ def ask_gemini(question, context):
 if __name__ == "__main__":
 
     main()
+
 
 
 
