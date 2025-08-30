@@ -841,7 +841,7 @@ def main():
                         target_words, compression_ratio
                     )
                     
-                    if results:
+                    if results and 'error' not in results:
                         st.session_state.results = results
                         
                         # Display results
@@ -864,13 +864,16 @@ def main():
                             st.pyplot(results['entities_fig'])
                         
                         # Download buttons
-                        with open(results['pdf_path'], "rb") as f:
-                            st.download_button(
-                                label="Download PDF Report",
-                                data=f,
-                                file_name="analysis_report.pdf",
-                                mime="application/pdf"
+                        if 'report_path' in results and results['report_path']:
+                            create_download_button(
+                                results['report_path'], 
+                                results.get('report_mime_type', 'text/plain'),
+                                "Download Report"
                             )
+                    elif results and 'error' in results:
+                        st.error(f"Processing failed: {results['error']}")
+                    else:
+                        st.error("Processing failed with unknown error")
     
     with tab2:
         st.header("YouTube Video Processing")
@@ -884,7 +887,7 @@ def main():
                         model_choice, target_words
                     )
                     
-                    if results:
+                    if results and 'error' not in results:
                         st.session_state.results = results
                         
                         # Display results
@@ -907,22 +910,25 @@ def main():
                             st.pyplot(results['entities_fig'])
                         
                         # Download buttons
-                        with open(results['pdf_path'], "rb") as f:
-                            st.download_button(
-                                label="Download PDF Report",
-                                data=f,
-                                file_name="youtube_analysis_report.pdf",
-                                mime="application/pdf"
+                        if 'report_path' in results and results['report_path']:
+                            create_download_button(
+                                results['report_path'], 
+                                results.get('report_mime_type', 'text/plain'),
+                                "Download Report"
                             )
+                    elif results and 'error' in results:
+                        st.error(f"Processing failed: {results['error']}")
+                    else:
+                        st.error("Processing failed with unknown error")
     
     with tab3:
         st.header("Question Answering System")
         
-        if st.session_state.results is None:
+        if st.session_state.results is None or 'error' in st.session_state.results:
             st.info("Please process a document or YouTube video first.")
         else:
             # Get context based on processing type
-            if 'chunks' in st.session_state.results.get('summary_results', {}):
+            if 'summary_results' in st.session_state.results:
                 chunks = st.session_state.results['summary_results']['chunks']
                 context = " ".join(chunks)
             else:
@@ -964,7 +970,7 @@ def main():
     with tab4:
         st.header("MCQ Generation with Gemini")
         
-        if st.session_state.results is None:
+        if st.session_state.results is None or 'error' in st.session_state.results:
             st.info("Please process a document or YouTube video first.")
         elif not st.session_state.gemini_api_key:
             st.info("Please enter your Gemini API key in the sidebar.")
@@ -1015,7 +1021,6 @@ def main():
                                     )
                     else:
                         st.error("Failed to generate MCQs")
-
 def ask_gemini(question, context):
     try:
         model = genai.GenerativeModel("gemini-pro")
@@ -1028,6 +1033,7 @@ def ask_gemini(question, context):
 if __name__ == "__main__":
 
     main()
+
 
 
 
