@@ -30,6 +30,61 @@ import google.generativeai as genai
 from langdetect import detect, DetectorFactory
 DetectorFactory.seed = 0
 import spacy
+# Standard library imports
+import io
+import re
+import os
+import json
+import fitz
+import numpy as np
+from PIL import Image
+from tqdm import tqdm
+from typing import List, Dict
+import nltk
+from nltk.tokenize import sent_tokenize
+import matplotlib.pyplot as plt
+from wordcloud import WordCloud
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+import textwrap
+from collections import Counter
+import pytesseract
+
+# YouTube processing
+import yt_dlp
+import whisper
+from pydub import AudioSegment
+
+# NLP and AI
+import evaluate
+from bert_score import score as bert_score
+import google.generativeai as genai
+from langdetect import detect, DetectorFactory
+DetectorFactory.seed = 0
+import spacy
+
+# Machine Learning frameworks - ADD THESE IMPORTS
+import torch
+import torchvision
+import torchaudio
+
+# Transformers
+from transformers import (
+    BartForConditionalGeneration, BartTokenizer,
+    PegasusForConditionalGeneration, PegasusTokenizer,
+    LEDForConditionalGeneration, LEDTokenizer,
+    AutoModelForSeq2SeqLM, AutoTokenizer,
+    pipeline
+)
+from sentence_transformers import SentenceTransformer
+import faiss
+
+# Additional imports
+import tempfile
+import requests
+from pathlib import Path
+import subprocess
+import sys
 
 # Transformers
 from transformers import (
@@ -934,5 +989,6 @@ def ask_gemini(question, context):
 if __name__ == "__main__":
 
     main()
+
 
 
