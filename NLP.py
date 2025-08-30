@@ -343,76 +343,59 @@ def chunk_text_tokenwise(text, tokenizer, max_tokens=512, overlap=50):
     return chunks
 
 # YouTube Processing Functions
-def download_youtube_audio(youtube_url, output_path="downloads"):
-    os.makedirs(output_path, exist_ok=True)
+def download_youtube_audio_fallback(youtube_url, output_path="downloads"):
+    """Try multiple alternative download methods"""
+    methods = [
+        try_format_251,  # Try specific format
+        try_with_cookies,  # Try with browser cookies
+        try_different_user_agent,  # Try different UA
+    ]
     
+    for method in methods:
+        try:
+            result = method(youtube_url, output_path)
+            if result[0]:  # If download successful
+                return result
+        except:
+            continue
+    
+    return None, None
+
+def try_format_251(youtube_url, output_path):
+    """Try with specific format 251 (high quality audio)"""
     ydl_opts = {
-        'format': 'bestaudio/best',
+        'format': '251',  # High quality audio format
         'outtmpl': f'{output_path}/%(title)s.%(ext)s',
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-            'preferredquality': '192',
-        }],
-        # Enhanced bypass options
         'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-            'Sec-Fetch-Dest': 'document',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Site': 'none',
-            'Sec-Fetch-User': '?1',
-            'Cache-Control': 'max-age=0',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         },
-        'extract_flat': False,
-        'ignoreerrors': True,
-        'retries': 10,
-        'fragment_retries': 10,
-        'skip_unavailable_fragments': True,
-        'keep_fragments': True,
-        'no_check_certificate': True,
-        'geo_bypass': True,
-        'geo_bypass_country': 'US',
-        'geo_bypass_ip_block': '0.0.0.0/0',
-        'verbose': True,
     }
     
-    try:
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(youtube_url, download=True)
+        audio_filename = ydl.prepare_filename(info)
+        video_title = info.get('title', 'unknown_title')
+        return audio_filename, video_title
+
+def try_with_cookies(youtube_url, output_path):
+    """Try using browser cookies (if available)"""
+    # This requires users to export cookies from their browser
+    cookie_file = "cookies.txt"
+    
+    if os.path.exists(cookie_file):
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'outtmpl': f'{output_path}/%(title)s.%(ext)s',
+            'cookiefile': cookie_file,
+        }
+        
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # Extract info first
-            info = ydl.extract_info(youtube_url, download=False)
+            info = ydl.extract_info(youtube_url, download=True)
+            audio_filename = ydl.prepare_filename(info).replace('.webm', '.mp3').replace('.m4a', '.mp3')
             video_title = info.get('title', 'unknown_title')
-            
-            st.info(f"Attempting to download: {video_title}")
-            
-            # Try to download
-            try:
-                ydl.download([youtube_url])
-            except Exception as download_error:
-                st.warning(f"Standard download failed: {download_error}. Trying alternative method...")
-                # Try with different format
-                return download_youtube_audio_fallback(youtube_url, output_path)
-            
-            # Find the downloaded file
-            expected_filename = ydl.prepare_filename(info).replace('.webm', '.mp3').replace('.m4a', '.mp3')
-            
-            if os.path.exists(expected_filename):
-                return expected_filename, video_title
-            else:
-                # Look for any audio file in the directory
-                for file in os.listdir(output_path):
-                    if file.endswith(('.mp3', '.m4a', '.webm')):
-                        return os.path.join(output_path, file), video_title
-                
-                return None, video_title
-                
-    except Exception as e:
-        st.error(f"Error downloading video: {e}")
-        return None, None
+            return audio_filename, video_title
+    
+    return None, None
 
 def transcribe_audio(audio_path, model_size="base"):
     st.info(f"Loading Whisper {model_size} model...")
@@ -1238,6 +1221,7 @@ def ask_gemini(question, context):
 if __name__ == "__main__":
 
     main()
+
 
 
 
