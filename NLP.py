@@ -345,24 +345,63 @@ def chunk_text_tokenwise(text, tokenizer, max_tokens=512, overlap=50):
 # YouTube Processing Functions
 def download_youtube_audio(youtube_url, output_path="downloads"):
     os.makedirs(output_path, exist_ok=True)
-    ydl_opts = {
-        'format': 'bestaudio/best',
-        'outtmpl': f'{output_path}/%(title)s.%(ext)s',
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-            'preferredquality': '192',
-        }],
-        'quiet': True,
-    }
+    
+    # Method 1: yt-dlp with enhanced options
     try:
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'outtmpl': f'{output_path}/%(title)s.%(ext)s',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }],
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': '*/*',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Referer': 'https://www.youtube.com/',
+            },
+            'extract_flat': False,
+            'ignoreerrors': True,
+            'no_warnings': True,
+            'verbose': False,
+        }
+        
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(youtube_url, download=True)
             audio_filename = ydl.prepare_filename(info).replace('.webm', '.mp3').replace('.m4a', '.mp3')
             video_title = info.get('title', 'unknown_title')
         return audio_filename, video_title
+        
     except Exception as e:
-        st.error(f"Error downloading video: {e}")
+        st.warning(f"Primary download method failed: {e}. Trying alternative...")
+    
+    # Method 2: Try different format
+    try:
+        ydl_opts = {
+            'format': 'm4a/bestaudio/best',
+            'outtmpl': f'{output_path}/%(title)s.%(ext)s',
+            'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3'}],
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            },
+        }
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(youtube_url, download=True)
+            audio_filename = ydl.prepare_filename(info).replace('.webm', '.mp3').replace('.m4a', '.mp3')
+            video_title = info.get('title', 'unknown_title')
+        return audio_filename, video_title
+        
+    except Exception as e:
+        st.warning(f"Second download method failed: {e}")
+    
+    # Method 3: Use pytube as last resort
+    try:
+        return download_with_pytube(youtube_url, output_path)
+    except Exception as e:
+        st.error(f"All download methods failed: {e}")
         return None, None
 
 def transcribe_audio(audio_path, model_size="base"):
@@ -1147,6 +1186,7 @@ def ask_gemini(question, context):
 if __name__ == "__main__":
 
     main()
+
 
 
 
