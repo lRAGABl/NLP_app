@@ -346,53 +346,63 @@ def chunk_text_tokenwise(text, tokenizer, max_tokens=512, overlap=50):
 def download_youtube_audio(youtube_url, output_path="downloads"):
     os.makedirs(output_path, exist_ok=True)
     
-    # Method 1: yt-dlp with enhanced options
-    try:
-        ydl_opts = {
-            'format': 'bestaudio/best',
-            'outtmpl': f'{output_path}/%(title)s.%(ext)s',
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192',
-            }],
-            'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': '*/*',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Referer': 'https://www.youtube.com/',
-            },
-            'extract_flat': False,
-            'ignoreerrors': True,
-            'no_warnings': True,
-            'verbose': False,
-        }
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'outtmpl': f'{output_path}/%(title)s.%(ext)s',
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192',
+        }],
+        'quiet': False,  # Set to False to see more details
+        'verbose': True,  # Add verbose output
+        'no_warnings': False,  # Show warnings
         
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(youtube_url, download=True)
-            audio_filename = ydl.prepare_filename(info).replace('.webm', '.mp3').replace('.m4a', '.mp3')
-            video_title = info.get('title', 'unknown_title')
-        return audio_filename, video_title
+        # Enhanced headers to mimic browser
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+        },
         
-    except Exception as e:
-        st.warning(f"Primary download method failed: {e}. Trying alternative...")
+        # Additional options to bypass restrictions
+        'extract_flat': False,
+        'ignoreerrors': True,
+        'retries': 10,
+        'fragment_retries': 10,
+        'skip_unavailable_fragments': True,
+        'keep_fragments': True,
+    }
     
-    # Method 2: Try different format
     try:
-        ydl_opts = {
-            'format': 'm4a/bestaudio/best',
-            'outtmpl': f'{output_path}/%(title)s.%(ext)s',
-            'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3'}],
-            'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            },
-        }
-        
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(youtube_url, download=True)
-            audio_filename = ydl.prepare_filename(info).replace('.webm', '.mp3').replace('.m4a', '.mp3')
+            # Try to extract info first
+            info = ydl.extract_info(youtube_url, download=False)
             video_title = info.get('title', 'unknown_title')
-        return audio_filename, video_title
+            
+            # Now try to download
+            st.info(f"Downloading: {video_title}")
+            ydl.download([youtube_url])
+            
+            # Find the downloaded file
+            audio_filename = ydl.prepare_filename(info).replace('.webm', '.mp3').replace('.m4a', '.mp3')
+            
+            if os.path.exists(audio_filename):
+                return audio_filename, video_title
+            else:
+                # Try to find any audio file in the directory
+                for file in os.listdir(output_path):
+                    if file.endswith('.mp3'):
+                        return os.path.join(output_path, file), video_title
+                
+                return None, video_title
+                
+    except Exception as e:
+        st.error(f"Error downloading video: {e}")
+        return None, None
         
     except Exception as e:
         st.warning(f"Second download method failed: {e}")
@@ -1202,6 +1212,7 @@ def ask_gemini(question, context):
 if __name__ == "__main__":
 
     main()
+
 
 
 
