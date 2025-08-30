@@ -521,24 +521,48 @@ def plot_entity_types(entities):
     return fig
 
 def save_to_pdf(content, filename="document_analysis.pdf", title="Document Analysis Report"):
-    c = canvas.Canvas(filename, pagesize=letter)
-    width, height = letter
-    margin = 50
-    y_position = height - margin
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(margin, y_position, title)
-    y_position -= 30
-    c.setFont("Helvetica", 12)
-    lines = textwrap.wrap(content, width=80)
-    for line in lines:
-        if y_position < margin:
-            c.showPage()
-            y_position = height - margin
-            c.setFont("Helvetica", 12)
-        c.drawString(margin, y_position, line)
-        y_position -= 15
-    c.save()
-    return filename
+    try:
+        # Create the directory if it doesn't exist
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        
+        c = canvas.Canvas(filename, pagesize=letter)
+        width, height = letter
+        margin = 50
+        y_position = height - margin
+        
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(margin, y_position, title)
+        y_position -= 30
+        
+        c.setFont("Helvetica", 12)
+        lines = textwrap.wrap(content, width=80)
+        
+        for line in lines:
+            if y_position < margin:
+                c.showPage()
+                y_position = height - margin
+                c.setFont("Helvetica", 12)
+            c.drawString(margin, y_position, line)
+            y_position -= 15
+        
+        c.save()
+        
+        # Check if file was actually created
+        if os.path.exists(filename):
+            return filename
+        else:
+            # Fallback: save as text file
+            txt_filename = filename.replace('.pdf', '.txt')
+            with open(txt_filename, 'w', encoding='utf-8') as f:
+                f.write(content)
+            return txt_filename
+            
+    except Exception as e:
+        # Fallback: create a simple text file
+        fallback_filename = "analysis_report.txt"
+        with open(fallback_filename, 'w', encoding='utf-8') as f:
+            f.write(content)
+        return fallback_filename
 
 def save_models(model, tokenizer, save_path="saved_models"):
     os.makedirs(save_path, exist_ok=True)
@@ -989,6 +1013,7 @@ def ask_gemini(question, context):
 if __name__ == "__main__":
 
     main()
+
 
 
 
